@@ -231,7 +231,7 @@ median_y = Get quantile: "y", 0.5
 Scatter plot (mark): "beat", 0, 0, "y", median_y - correct_period / 16, median_y + correct_period / 16, 1, "no", "+"
 Draw inner box
 Marks left: 2, "yes", "yes", "no"
-Text top: "no", movement$
+Text top: "no", movement$ + " (" + date$() + ")"
 
 y1 = y2 + 0.5
 y2 = y1 + height
@@ -280,3 +280,9 @@ sd_y = Get standard deviation: "amplitude"
 Scatter plot (mark): "beat", 0, 0, "amplitude", min_y - sd_y, max_y + sd_y, 1, "yes", "+"
 mean_y = Get mean: "amplitude"
 One mark right: mean_y, "yes", "yes", "yes", ""
+
+y1 = 0.5
+Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
+Select inner viewport: x1, x2, y1, y2
+Save as PDF file: "./measurements/" + movement$ + ".pdf"
+Save as comma-separated file: "./measurements/" + movement$ + ".csv"
