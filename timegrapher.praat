@@ -32,7 +32,9 @@ beginPause: "Watch recording"
     real: "Recording duration", 20
     comment: "Change threshold when script fails to pick up pulses."
     comment: "If too many pulses, increase threshold; if too few, decrease."
-    optionMenu: "Threshold shift", 5
+    optionMenu: "Threshold shift", 7
+        option: "30"
+        option: "25"
         option: "20"
         option: "15"
         option: "10"
@@ -42,6 +44,8 @@ beginPause: "Watch recording"
         option: "-10"
         option: "-15"
         option: "-20"
+        option: "-25"
+        option: "-30"
 endPause: "Continue", 1
 
 Record Sound (fixed time)... Microphone 1 0.5 44100 recording_duration
@@ -118,7 +122,7 @@ for point from continue_point to num_points
     if point >= continue_point
         selectObject: "IntensityTier test3_part_band"
         cur_intensity = Get value at index: point
-        if cur_intensity > mean_intensity
+        if cur_intensity > intensity_threshold
             p_min_5_intensity = Get value at index: point - 5
             p_min_15_intensity = Get value at index: point - 15
             if ((cur_intensity / p_min_5_intensity) > 1.12) and (cur_intensity > p_min_15_intensity)
