@@ -30,6 +30,18 @@ beginPause: "Watch recording"
     comment: "that doesn't require you to hold it."
     comment: "The recording will start when you press 'Continue'"
     real: "Recording duration", 20
+    comment: "Change threshold when script fails to pick up pulses."
+    comment: "If too many pulses, increase threshold; if too few, decrease."
+    optionMenu: "Threshold shift", 5
+        option: "20"
+        option: "15"
+        option: "10"
+        option: "5"
+        option: "0"
+        option: "-5"
+        option: "-10"
+        option: "-15"
+        option: "-20"
 endPause: "Continue", 1
 
 Record Sound (fixed time)... Microphone 1 0.5 44100 recording_duration
@@ -97,6 +109,8 @@ Create TextGrid: 0, new_dur, "pulses", "pulses"
 selectObject: "Sound test3_part_band"
 To Intensity: 5000, 0, "no"
 mean_intensity = Get mean: 0, 0, "energy"
+threshold_shift = number(threshold_shift$)
+intensity_threshold = mean_intensity + threshold_shift
 Down to IntensityTier
 num_points = Get number of points
 continue_point = 16
@@ -125,20 +139,20 @@ for rp from 1 to raw_pulses
         pulse_no = 1
     endif
     rp_time = Get time of point: 1, rp
-    part_start = rp_time - 0.02
+    part_start = rp_time - 0.03
     part_end = rp_time - 0.001
     Extract part: part_start, part_end, "no"
     num_prev_rp = Get number of points: 1
     Remove
     selectObject: "TextGrid pulses"
     part_start = rp_time + 0.001
-    part_end = rp_time + 0.02
+    part_end = rp_time + 0.03
     Extract part: part_start, part_end, "no"
     num_next_rp = Get number of points: 1
     Remove
     selectObject: "TextGrid pulses"
     # ignore extra pulses between pulse two and three
-    if not (num_prev_rp == 2 and num_next_rp == 1)
+    if not (num_prev_rp >= 2 and num_next_rp >= 1)
         # ignore incomplete ticks at start and spurious pulses
         if (not pulse_no == 1) or (pulse_no == 1 and num_next_rp >= 2)
             Set point text: 1, rp, string$ (pulse_no)
@@ -213,8 +227,8 @@ margin = 0.5
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
 Select inner viewport: x1, x2, y1, y2
 
-mean_y = Get mean: "y"
-Scatter plot (mark): "beat", 0, 0, "y", mean_y - correct_period / 16, mean_y + correct_period / 16, 1, "no", "+"
+median_y = Get quantile: "y", 0.5
+Scatter plot (mark): "beat", 0, 0, "y", median_y - correct_period / 16, median_y + correct_period / 16, 1, "no", "+"
 Draw inner box
 Marks left: 2, "yes", "yes", "no"
 Text top: "no", movement$
@@ -228,12 +242,14 @@ Extract rows where column (number): "beat", "greater than or equal to", 4
 min_y = Get minimum: "rate_deviation"
 max_y = Get maximum: "rate_deviation"
 sd_y = Get standard deviation: "rate_deviation"
+mean_y = Get mean: "rate_deviation"
 Remove
 selectObject: "Table measurements"
 Scatter plot (mark): "beat", 0, 0, "rate_deviation", min_y - sd_y, max_y + sd_y, 1, "no", "+"
 Draw inner box
 Marks left: 2, "yes", "yes", "no"
 Text left: "yes", "rate dev. (s)"
+One mark right: mean_y, "yes", "yes", "yes", ""
 
 y1 = y2 + 0.5
 y2 = y1 + height
@@ -244,12 +260,14 @@ Extract rows where column (number): "beat", "greater than or equal to", 3
 sd_y = Get standard deviation: "beat_error"
 min_y = Get minimum: "beat_error"
 max_y = Get maximum: "beat_error"
+mean_y = Get mean: "beat_error"
 Remove
 selectObject: "Table measurements"
 Scatter plot (mark): "beat", 0, 0, "beat_error", min_y - sd_y, max_y + sd_y, 1, "no", "+"
 Draw inner box
 Marks left: 2, "yes", "yes", "no"
 Text left: "yes", "beat err. (s)"
+One mark right: mean_y, "yes", "yes", "yes", ""
 
 y1 = y2 + 0.5
 y2 = y1 + height
@@ -260,3 +278,5 @@ min_y = Get minimum: "amplitude"
 max_y = Get maximum: "amplitude"
 sd_y = Get standard deviation: "amplitude"
 Scatter plot (mark): "beat", 0, 0, "amplitude", min_y - sd_y, max_y + sd_y, 1, "yes", "+"
+mean_y = Get mean: "amplitude"
+One mark right: mean_y, "yes", "yes", "yes", ""
