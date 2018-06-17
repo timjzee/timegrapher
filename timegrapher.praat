@@ -281,12 +281,66 @@ Select inner viewport: x1, x2, y1, y2
 min_y = Get minimum: "amplitude"
 max_y = Get maximum: "amplitude"
 sd_y = Get standard deviation: "amplitude"
-Scatter plot (mark): "beat", 0, 0, "amplitude", min_y - sd_y, max_y + sd_y, 1, "yes", "+"
+Scatter plot (mark): "beat", 0, 0, "amplitude", min_y - sd_y, max_y + sd_y, 1, "no", "+"
+Draw inner box
+Marks left: 2, "yes", "yes", "no"
+Marks bottom: 2, "yes", "yes", "no"
+Text left: "yes", "amplitude"
 mean_y = Get mean: "amplitude"
 One mark right: mean_y, "yes", "yes", "yes", ""
 
+# draw tic
+y1 = y2 + 0.5
+y2 = y1 + height
+x2 = x1 + 0.5 * width
+Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
+Select inner viewport: x1, x2, y1, y2
+tic_p1 = Get value: 3, "p1"
+tic_p2 = Get value: 3, "p2"
+tic_p3 = Get value: 3, "p3"
+tic_start = tic_p1 - 0.015
+tic_end = tic_p3 + 0.025
+selectObject: "Sound test3_part_band"
+Draw: tic_start, tic_end, 0, 0, "no", "Curve"
+Draw inner box
+One mark bottom: tic_p1, "no", "yes", "yes", ""
+One mark bottom: tic_p2, "no", "yes", "yes", ""
+One mark bottom: tic_p3, "no", "yes", "yes", ""
+Text top: "no", "Tic"
+
+# draw toc
+x1 = x2
+x2 = x1 + 0.5 * width
+Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
+Select inner viewport: x1, x2, y1, y2
+selectObject: "Table measurements"
+toc_p1 = Get value: 4, "p1"
+toc_p2 = Get value: 4, "p2"
+toc_p3 = Get value: 4, "p3"
+toc_start = toc_p1 - 0.015
+toc_end = toc_p3 + 0.025
+selectObject: "Sound test3_part_band"
+Draw: toc_start, toc_end, 0, 0, "no", "Curve"
+Draw inner box
+One mark bottom: toc_p1, "no", "yes", "yes", ""
+One mark bottom: toc_p2, "no", "yes", "yes", ""
+One mark bottom: toc_p3, "no", "yes", "yes", ""
+Text top: "no", "Toc"
+
+x1 = 1
+x2 = x1 + width
 y1 = 0.5
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
 Select inner viewport: x1, x2, y1, y2
-Save as PDF file: "./measurements/" + movement$ + ".pdf"
+
+system$ = Report system properties
+newline_index = index_regex(system$, "\n")
+os$ = mid$(system$, newline_index + 2, 3)
+if os$ == "mac"
+    Save as PDF file: "./measurements/" + movement$ + ".pdf"
+else
+    Save as 300-dpi PNG file: "./measurements/" + movement$ + ".png"
+endif
+
+selectObject: "Table measurements"
 Save as comma-separated file: "./measurements/" + movement$ + ".csv"
