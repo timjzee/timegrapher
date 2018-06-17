@@ -16,7 +16,7 @@ beginPause: "Enter information"
     real: "Beats per hour", 21600
 endPause: "Continue", 1
 
-if movement$ != "other"
+if movement$ != "Other"
     selectObject: "Table movements"
     movement_index = Search column: "movement", movement$
     beats_per_hour = Get value: movement_index, "bph"
