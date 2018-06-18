@@ -205,7 +205,7 @@ for pulse from 1 to num_pulses
         if beat >= 4
             p1_min2 = Get value: beat - 2, "p1"
             p1_min3 = Get value: beat - 3, "p1"
-            rate_dev = ((((p1_min1 - p1_min3) - 2 * correct_period) + ((pulse_time - p1_min2) - 2 * correct_period)) / 2) * beats_per_hour
+            rate_dev = (((p1_min1 - p1_min3) - 2 * correct_period) * (beats_per_hour / 2) + ((pulse_time - p1_min2) - 2 * correct_period) * (beats_per_hour / 2)) * 24
             Set numeric value: beat, "rate_deviation", rate_dev
         endif
     elif pulse_label$ == "2"
@@ -327,8 +327,8 @@ One mark bottom: toc_p2, "no", "yes", "yes", ""
 One mark bottom: toc_p3, "no", "yes", "yes", ""
 Text top: "no", "Toc"
 
-x1 = 1
-x2 = x1 + width
+x1 = 0.5
+x2 = x1 + width + 1
 y1 = 0.5
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
 Select inner viewport: x1, x2, y1, y2
