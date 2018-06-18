@@ -12,7 +12,7 @@ beginPause: "Enter information"
             option: mvmnt_name$
         endfor
     comment: "Provide data if 'Movement' is set to 'Other'"
-    real: "Lift angle", 51
+    real: "Lift angle", 52
     real: "Beats per hour", 21600
 endPause: "Continue", 1
 
@@ -30,22 +30,6 @@ beginPause: "Watch recording"
     comment: "that doesn't require you to hold it."
     comment: "The recording will start when you press 'Continue'"
     real: "Recording duration", 20
-    comment: "Change threshold when script fails to pick up pulses."
-    comment: "If too many pulses, increase threshold; if too few, decrease."
-    optionMenu: "Threshold shift", 7
-        option: "30"
-        option: "25"
-        option: "20"
-        option: "15"
-        option: "10"
-        option: "5"
-        option: "0"
-        option: "-5"
-        option: "-10"
-        option: "-15"
-        option: "-20"
-        option: "-25"
-        option: "-30"
 endPause: "Continue", 1
 
 Record Sound (fixed time)... Microphone 1 0.5 44100 recording_duration
@@ -105,65 +89,105 @@ if noise_reduction
     endfor
 endif
 
-cooldown = 15
-
-selectObject: "Sound test3_part_band"
-new_dur = Get total duration
-Create TextGrid: 0, new_dur, "pulses", "pulses"
 selectObject: "Sound test3_part_band"
 To Intensity: 5000, 0, "no"
-mean_intensity = Get mean: 0, 0, "energy"
-threshold_shift = number(threshold_shift$)
-intensity_threshold = mean_intensity + threshold_shift
 Down to IntensityTier
-num_points = Get number of points
-continue_point = 16
-for point from continue_point to num_points
-    if point >= continue_point
-        selectObject: "IntensityTier test3_part_band"
-        cur_intensity = Get value at index: point
-        if cur_intensity > intensity_threshold
-            p_min_5_intensity = Get value at index: point - 5
-            p_min_15_intensity = Get value at index: point - 15
-            if ((cur_intensity / p_min_5_intensity) > 1.12) and (cur_intensity > p_min_15_intensity)
-                pulse_time = Get time from index: point
-                selectObject: "TextGrid pulses"
-                Insert point: 1, pulse_time, ""
-                continue_point = point + cooldown
+
+procedure identifyPulses: identifyPulses.threshold_shift$
+    cooldown = 15
+
+    selectObject: "Sound test3_part_band"
+    new_dur = Get total duration
+    Create TextGrid: 0, new_dur, "pulses", "pulses"
+    selectObject: "Intensity test3_part_band"
+    mean_intensity = Get mean: 0, 0, "energy"
+    threshold_shift = number(identifyPulses.threshold_shift$)
+    intensity_threshold = mean_intensity + threshold_shift
+    selectObject: "IntensityTier test3_part_band"
+    num_points = Get number of points
+    continue_point = 16
+    for point from continue_point to num_points
+        if point >= continue_point
+            selectObject: "IntensityTier test3_part_band"
+            cur_intensity = Get value at index: point
+            if cur_intensity > intensity_threshold
+                p_min_5_intensity = Get value at index: point - 5
+                p_min_15_intensity = Get value at index: point - 15
+                if ((cur_intensity / p_min_5_intensity) > 1.12) and (cur_intensity > p_min_15_intensity)
+                    pulse_time = Get time from index: point
+                    selectObject: "TextGrid pulses"
+                    Insert point: 1, pulse_time, ""
+                    continue_point = point + cooldown
+                endif
             endif
         endif
-    endif
-endfor
+    endfor
 
-selectObject: "TextGrid pulses"
-raw_pulses = Get number of points: 1
-pulse_no = 1
-for rp from 1 to raw_pulses
-    if pulse_no == 4
-        pulse_no = 1
-    endif
-    rp_time = Get time of point: 1, rp
-    part_start = rp_time - 0.03
-    part_end = rp_time - 0.001
-    Extract part: part_start, part_end, "no"
-    num_prev_rp = Get number of points: 1
-    Remove
     selectObject: "TextGrid pulses"
-    part_start = rp_time + 0.001
-    part_end = rp_time + 0.03
-    Extract part: part_start, part_end, "no"
-    num_next_rp = Get number of points: 1
-    Remove
-    selectObject: "TextGrid pulses"
-    # ignore extra pulses between pulse two and three
-    if not (num_prev_rp >= 2 and num_next_rp >= 1)
-        # ignore incomplete ticks at start and spurious pulses
-        if (not pulse_no == 1) or (pulse_no == 1 and num_next_rp >= 2)
-            Set point text: 1, rp, string$ (pulse_no)
-            pulse_no += 1
+    raw_pulses = Get number of points: 1
+    pulse_no = 1
+    for rp from 1 to raw_pulses
+        if pulse_no == 4
+            pulse_no = 1
         endif
+        rp_time = Get time of point: 1, rp
+        part_start = rp_time - 0.04
+        part_end = rp_time - 0.001
+        Extract part: part_start, part_end, "no"
+        num_prev_rp = Get number of points: 1
+        Remove
+        selectObject: "TextGrid pulses"
+        part_start = rp_time + 0.001
+        part_end = rp_time + 0.05
+        Extract part: part_start, part_end, "no"
+        num_next_rp = Get number of points: 1
+        Remove
+        selectObject: "TextGrid pulses"
+        # ignore extra pulses between pulse two and three
+        if not (num_prev_rp >= 2 and num_next_rp >= 1)
+            # ignore incomplete ticks at start and spurious pulses
+            if (not pulse_no == 1) or (pulse_no == 1 and num_next_rp >= 2)
+                Set point text: 1, rp, string$ (pulse_no)
+                pulse_no += 1
+            endif
+        endif
+    endfor
+endproc
+
+pulses_identified = 0
+threshold_shift$ = "0"
+while not pulses_identified
+    @identifyPulses: threshold_shift$
+    selectObject: "Sound test3_part_band"
+    plusObject: "TextGrid pulses"
+    View & Edit
+    beginPause: "Check pulse identification"
+        comment: "Use 'in' and 'out' buttons to zoom in and out in the pop-up window."
+        comment: "Does every tic/toc have a '1', '2', and '3' pulse?"
+        boolean: "Pulses identified", 0
+    endPause: "Continue", 1
+    if not pulses_identified
+        beginPause: "Adjust pulse threshold"
+            comment: "If too many pulses, increase threshold; if too few, decrease."
+            optionMenu: "Threshold shift", 7
+                option: "30"
+                option: "25"
+                option: "20"
+                option: "15"
+                option: "10"
+                option: "5"
+                option: "0"
+                option: "-5"
+                option: "-10"
+                option: "-15"
+                option: "-20"
+                option: "-25"
+                option: "-30"
+        endPause: "Continue", 1
+        selectObject: "TextGrid pulses"
+        Remove
     endif
-endfor
+endwhile
 
 # Pulse analysis
 
