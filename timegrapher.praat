@@ -2,7 +2,7 @@ Read Table from comma-separated file: "movements.csv"
 num_movements = Get number of rows
 
 beginPause: "Enter information"
-    comment: "Hallo Cheng-Kit, welkom in Praat :)"
+    comment: "Welcome to timegrapher.praat"
     comment: "Options:"
     boolean: "Noise reduction", 1
     optionMenu: "Movement", 1
@@ -14,6 +14,9 @@ beginPause: "Enter information"
     comment: "Provide data if 'Movement' is set to 'Other'"
     real: "Lift angle", 52
     real: "Beats per hour", 21600
+    comment: "Optional Information:"
+    sentence: "Watch name", ""
+    word: "Year of manufacture", ""
 endPause: "Continue", 1
 
 if movement$ != "Other"
@@ -27,7 +30,15 @@ endif
 
 beginPause: "Watch recording"
     comment: "Now place the watch directly against the microphone in a position"
-    comment: "that doesn't require you to hold it."
+    comment: "that doesn't require you to hold it. Indicate the position of the"
+    comment: "watch below:"
+    choice: "Position", 3
+        option: "Dial Up"
+        option: "Dial Down"
+        option: "Crown Up"
+        option: "Crown Down"
+        option: "Crown Left"
+        option: "Crown Right"
     comment: "The recording will start when you press 'Continue'"
     real: "Recording duration", 20
 endPause: "Continue", 1
@@ -93,7 +104,7 @@ selectObject: "Sound test3_part_band"
 To Intensity: 5000, 0, "no"
 Down to IntensityTier
 
-procedure identifyPulses: identifyPulses.threshold_shift$
+procedure identifyPulses: identifyPulses.threshold_shift
     cooldown = 15
 
     selectObject: "Sound test3_part_band"
@@ -101,8 +112,8 @@ procedure identifyPulses: identifyPulses.threshold_shift$
     Create TextGrid: 0, new_dur, "pulses", "pulses"
     selectObject: "Intensity test3_part_band"
     mean_intensity = Get mean: 0, 0, "energy"
-    threshold_shift = number(identifyPulses.threshold_shift$)
-    intensity_threshold = mean_intensity + threshold_shift
+    # threshold_shift = number(identifyPulses.threshold_shift$)
+    intensity_threshold = mean_intensity + identifyPulses.threshold_shift
     selectObject: "IntensityTier test3_part_band"
     num_points = Get number of points
     continue_point = 16
@@ -126,38 +137,78 @@ procedure identifyPulses: identifyPulses.threshold_shift$
     selectObject: "TextGrid pulses"
     raw_pulses = Get number of points: 1
     pulse_no = 1
+    prev_p3_time = 0
     for rp from 1 to raw_pulses
         if pulse_no == 4
             pulse_no = 1
         endif
         rp_time = Get time of point: 1, rp
-        part_start = rp_time - 0.04
-        part_end = rp_time - 0.001
-        Extract part: part_start, part_end, "no"
-        num_prev_rp = Get number of points: 1
-        Remove
+        # part_start = rp_time - 0.04
+        # part_end = rp_time - 0.001
+        # Extract part: part_start, part_end, "no"
+        # num_prev_rp = Get number of points: 1
+        # Remove
         selectObject: "TextGrid pulses"
-        part_start = rp_time + 0.001
-        part_end = rp_time + 0.05
-        Extract part: part_start, part_end, "no"
-        num_next_rp = Get number of points: 1
-        Remove
-        selectObject: "TextGrid pulses"
+        if pulse_no == 3
+            part_start = rp_time + 0.001
+            part_end = rp_time + 0.05
+            Extract part: part_start, part_end, "no"
+            num_next_rp = Get number of points: 1
+            Remove
+            selectObject: "TextGrid pulses"
+            if num_next_rp >= 1
+                selectObject: "Intensity test3_part_band"
+                rp_intensity = Get maximum: rp_time, rp_time + 0.002, "Parabolic"
+                selectObject: "TextGrid pulses"
+                label_pulse$ = "True"
+                for nrp from (rp + 1) to (rp + num_next_rp)
+                    nrp_time = Get time of point: 1, nrp
+                    selectObject: "Intensity test3_part_band"
+                    nrp_intensity = Get maximum: nrp_time, nrp_time + 0.002, "Parabolic"
+                    selectObject: "TextGrid pulses"
+                    # if one of the pulses is more than 5 dB louder than current pulse, the current pulse is not labelled
+                    if (rp_intensity - nrp_intensity) < 5
+                        label_pulse$ = "False"
+                    endif
+                endfor
+                if label_pulse$ == "True"
+                    Set point text: 1, rp, string$ (pulse_no)
+                    prev_p3_time = Get time of point: 1, rp
+                    pulse_no += 1
+                endif
+            else
+                Set point text: 1, rp, string$ (pulse_no)
+                prev_p3_time = Get time of point: 1, rp
+                pulse_no += 1
+            endif
         # ignore extra pulses between pulse two and three
-        if not (num_prev_rp >= 2 and num_next_rp >= 1)
+        # if not (num_prev_rp >= 2 and num_next_rp >= 1)
+        else
+            part_start = rp_time + 0.001
+            part_end = rp_time + 0.015
+            Extract part: part_start, part_end, "no"
+            num_next_rp = Get number of points: 1
+            Remove
+            selectObject: "TextGrid pulses"
             # ignore incomplete ticks at start and spurious pulses
-            if (not pulse_no == 1) or (pulse_no == 1 and num_next_rp >= 2)
+            if pulse_no == 2
                 Set point text: 1, rp, string$ (pulse_no)
                 pulse_no += 1
+            elsif pulse_no == 1 and num_next_rp >= 2
+                # make sure that p1 can only be identified after 50% of the beat time since the last p3
+                if rp == 1 or not ((rp_time - prev_p3_time) < 0.5  * (1/(beats_per_hour/3600)))
+                    Set point text: 1, rp, string$ (pulse_no)
+                    pulse_no += 1
+                endif
             endif
         endif
     endfor
 endproc
 
 pulses_identified = 0
-threshold_shift$ = "0"
+threshold_shift = 0
 while not pulses_identified
-    @identifyPulses: threshold_shift$
+    @identifyPulses: threshold_shift
     selectObject: "Sound test3_part_band"
     plusObject: "TextGrid pulses"
     View & Edit
@@ -169,20 +220,8 @@ while not pulses_identified
     if not pulses_identified
         beginPause: "Adjust pulse threshold"
             comment: "If too many pulses, increase threshold; if too few, decrease."
-            optionMenu: "Threshold shift", 7
-                option: "30"
-                option: "25"
-                option: "20"
-                option: "15"
-                option: "10"
-                option: "5"
-                option: "0"
-                option: "-5"
-                option: "-10"
-                option: "-15"
-                option: "-20"
-                option: "-25"
-                option: "-30"
+            comment: "The useful range of the threshold shift is between -10 and 10."
+            real: "Threshold shift", 0
         endPause: "Continue", 1
         selectObject: "TextGrid pulses"
         Remove
@@ -246,21 +285,46 @@ endfor
 
 # Visualize results
 width = 5
+margin = 0.5
+
+## General Parameters
+height = 0.75
+x1 = 0.25
+x2 = x1 + width + 1.5
+y1 = 0.5
+y2 = y1 + height
+Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
+Select inner viewport: x1, x2, y1, y2
+Line width: 0.5
+Draw inner box
+Font size: 11
+Text: 0.025, "Left", 0.8, "Half", "Movement: " + movement$
+Text: 0.025, "Left", 0.5, "Half", "Watch: " + watch_name$
+Text: 0.025, "Left", 0.2, "Half", "Year of Manufacture: " + year_of_manufacture$
+Text: 0.355, "Left", 0.8, "Half", "Time: " + date$()
+Text: 0.355, "Left", 0.5, "Half", "Duration (seconds): " + string$(recording_duration)
+Text: 0.355, "Left", 0.2, "Half", "Watch Position: " + position$
+Text: 0.725, "Left", 0.8, "Half", "Beat Rate (BPH): " + string$(beats_per_hour)
+Text: 0.725, "Left", 0.5, "Half", "Lift Angle (degrees): " + string$(lift_angle)
+Font size: 12
+
+## Timegraph
 height = 1
 x1 = 1
 x2 = x1 + width
-y1 = 0.5
+y1 = y2 + margin
 y2 = y1 + height
-margin = 0.5
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
 Select inner viewport: x1, x2, y1, y2
 
 median_y = Get quantile: "y", 0.5
 Scatter plot (mark): "beat", 0, 0, "y", median_y - correct_period / 16, median_y + correct_period / 16, 1, "no", "+"
+Line width: 1
 Draw inner box
 Marks left: 2, "yes", "yes", "no"
-Text top: "no", movement$ + " (" + date$() + ")"
+#Text top: "no", movement$ + " (" + date$() + ")"
 
+## Rate Deviation
 y1 = y2 + 0.5
 y2 = y1 + height
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
@@ -279,6 +343,7 @@ Marks left: 2, "yes", "yes", "no"
 Text left: "yes", "rate dev. (s)"
 One mark right: mean_y, "yes", "yes", "yes", ""
 
+## Beat Error
 y1 = y2 + 0.5
 y2 = y1 + height
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
@@ -297,6 +362,7 @@ Marks left: 2, "yes", "yes", "no"
 Text left: "yes", "beat err. (s)"
 One mark right: mean_y, "yes", "yes", "yes", ""
 
+## Amplitude
 y1 = y2 + 0.5
 y2 = y1 + height
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
@@ -313,7 +379,7 @@ Text left: "yes", "amplitude"
 mean_y = Get mean: "amplitude"
 One mark right: mean_y, "yes", "yes", "yes", ""
 
-# draw tic
+## draw tic
 y1 = y2 + 0.5
 y2 = y1 + height
 x2 = x1 + 0.5 * width
@@ -332,7 +398,7 @@ One mark bottom: tic_p2, "no", "yes", "yes", ""
 One mark bottom: tic_p3, "no", "yes", "yes", ""
 Text top: "no", "Tic"
 
-# draw toc
+## draw toc
 x1 = x2
 x2 = x1 + 0.5 * width
 Select outer viewport: x1 - margin, x2 + margin, y1 - margin, y2 + margin
@@ -361,10 +427,10 @@ system$ = Report system properties
 newline_index = index_regex(system$, "\n")
 os$ = mid$(system$, newline_index + 2, 3)
 if os$ == "mac"
-    Save as PDF file: "./measurements/" + movement$ + ".pdf"
+    Save as PDF file: "./measurements/" + movement$ + " - " + position$ + ".pdf"
 else
-    Save as 300-dpi PNG file: "./measurements/" + movement$ + ".png"
+    Save as 300-dpi PNG file: "./measurements/" + movement$ + " - " + position$ + ".png"
 endif
 
 selectObject: "Table measurements"
-Save as comma-separated file: "./measurements/" + movement$ + ".csv"
+Save as comma-separated file: "./measurements/" + movement$ + " - " + position$ + ".csv"
