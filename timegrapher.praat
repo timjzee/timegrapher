@@ -185,7 +185,7 @@ procedure identifyPulses: identifyPulses.threshold_shift
         # if not (num_prev_rp >= 2 and num_next_rp >= 1)
         else
             part_start = rp_time + 0.001
-            part_end = rp_time + 0.015
+            part_end = rp_time + 0.04
             Extract part: part_start, part_end, "no"
             num_next_rp = Get number of points: 1
             Remove
